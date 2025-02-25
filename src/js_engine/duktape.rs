@@ -2,16 +2,15 @@
 
 use crate::{
     error::{Error, Result},
-    js_engine::{JsEngine, JsValue},
+    js_engine::JsEngine,
 };
-use core::fmt;
 use ducc::{FromValue, ToValue};
 
 /// Duktape Engine.
 pub struct Engine(ducc::Ducc);
 
 impl JsEngine for Engine {
-    type JsValue<'a> = Value<'a>;
+    type JsValue<'a> = ducc::Value<'a>;
 
     fn new() -> Result<Self> {
         Ok(Self(ducc::Ducc::new()))
@@ -21,10 +20,7 @@ impl JsEngine for Engine {
         let result = self
             .0
             .exec(code, Some("katex"), ducc::ExecSettings::default())?;
-        Ok(Value {
-            value: result,
-            engine: &self.0,
-        })
+        Ok(result)
     }
 
     fn call_function<'a>(
@@ -36,40 +32,25 @@ impl JsEngine for Engine {
             .0
             .globals()
             .get::<String, ducc::Function>(func_name.to_owned())?;
-        let args: ducc::Values = args.map(|v| v.value).collect();
+        let args: ducc::Values = args.collect();
         let result = function.call(args)?;
-        Ok(Value {
-            value: result,
-            engine: &self.0,
-        })
+        Ok(result)
     }
 
     fn create_bool_value(&self, input: bool) -> Result<Self::JsValue<'_>> {
-        Ok(Value {
-            value: input.to_value(&self.0)?,
-            engine: &self.0,
-        })
+        Ok(input.to_value(&self.0)?)
     }
 
     fn create_int_value(&self, input: i32) -> Result<Self::JsValue<'_>> {
-        Ok(Value {
-            value: input.to_value(&self.0)?,
-            engine: &self.0,
-        })
+        Ok(input.to_value(&self.0)?)
     }
 
     fn create_float_value(&self, input: f64) -> Result<Self::JsValue<'_>> {
-        Ok(Value {
-            value: input.to_value(&self.0)?,
-            engine: &self.0,
-        })
+        Ok(input.to_value(&self.0)?)
     }
 
     fn create_string_value(&self, input: String) -> Result<Self::JsValue<'_>> {
-        Ok(Value {
-            value: input.to_value(&self.0)?,
-            engine: &self.0,
-        })
+        Ok(input.to_value(&self.0)?)
     }
 
     fn create_object_value<'a>(
@@ -78,30 +59,13 @@ impl JsEngine for Engine {
     ) -> Result<Self::JsValue<'a>> {
         let obj = self.0.create_object();
         for (k, v) in input {
-            obj.set(k, v.value)?;
+            obj.set(k, v)?;
         }
-        Ok(Value {
-            value: ducc::Value::Object(obj),
-            engine: &self.0,
-        })
+        Ok(ducc::Value::Object(obj))
     }
-}
 
-/// Duktape Value.
-pub struct Value<'a> {
-    value: ducc::Value<'a>,
-    engine: &'a ducc::Ducc,
-}
-
-impl<'a> JsValue<'a> for Value<'a> {
-    fn into_string(self) -> Result<String> {
-        Ok(String::from_value(self.value, self.engine)?)
-    }
-}
-
-impl<'a> fmt::Debug for Value<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Value").field("value", &self.value).finish()
+    fn value_to_string(&self, value: Self::JsValue<'_>) -> Result<String> {
+        Ok(String::from_value(value, &self.0)?)
     }
 }
 

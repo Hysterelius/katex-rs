@@ -11,7 +11,7 @@
 //!
 //! This crate offers the following features:
 //!
-//! * `quick-js`: Enable by default. Use [quick-js](https://crates.io/crates/quick-js)
+//! * `quick-js`: Enable by default. Use [rquickjs](https://crates.io/crates/rquickjs)
 //!    as the JS backend.
 //! * `duktape`: Use [duktape](https://crates.io/crates/ducc) as the JS backend.
 //!    You need to disable the default features to enable this backend.
@@ -38,7 +38,7 @@ pub mod opts;
 pub use opts::{Opts, OptsBuilder, OutputType};
 
 mod js_engine;
-use js_engine::{Engine, JsEngine, JsValue};
+use js_engine::{Engine, JsEngine};
 
 /// KaTeX version.
 pub const KATEX_VERSION: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/KATEX-VERSION"));
@@ -89,7 +89,7 @@ where
     let opts = opts.as_ref().to_js_value(engine)?;
     let args = iter::once(input).chain(iter::once(opts));
     let result = engine.call_function("katexRenderToString", args)?;
-    result.into_string()
+    engine.value_to_string(result)
 }
 
 /// Render LaTeX equation to HTML with additional [options](`Opts`).

@@ -6,7 +6,7 @@ use cfg_if::cfg_if;
 /// A trait to represent a JS engine.
 pub(crate) trait JsEngine: Sized {
     /// The type of the JS value.
-    type JsValue<'a>: JsValue<'a>
+    type JsValue<'a>
     where
         Self: 'a;
 
@@ -40,25 +40,16 @@ pub(crate) trait JsEngine: Sized {
         &'a self,
         input: impl Iterator<Item = (String, Self::JsValue<'a>)>,
     ) -> Result<Self::JsValue<'a>>;
-}
 
-/// A trait to represent a JS value.
-pub(crate) trait JsValue<'a>: Sized {
     /// Convert the JS Value to a [`String`].
-    fn into_string(self) -> Result<String>;
+    fn value_to_string(&self, value: Self::JsValue<'_>) -> Result<String>;
 }
 
 cfg_if! {
     if #[cfg(feature = "quick-js")] {
-        cfg_if! {
-            if #[cfg(any(unix, all(windows, target_env = "gnu")))] {
-                mod quick_js;
+        mod quick_js;
 
-                pub(crate) type Engine = self::quick_js::Engine;
-            } else {
-                compile_error!("quick-js backend is not support in the current build target.");
-            }
-        }
+        pub(crate) type Engine = self::quick_js::Engine;
     } else if #[cfg(feature = "duktape")] {
         cfg_if! {
             if #[cfg(any(unix, windows))] {

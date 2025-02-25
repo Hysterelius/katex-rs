@@ -21,7 +21,7 @@ katex = "0.4"
 
 This crate offers the following features:
 
-* `quick-js`: Enable by default. Use [quick-js](https://crates.io/crates/quick-js) as the JS backend.
+* `quick-js`: Enable by default. Use [rquickjs](https://crates.io/crates/rquickjs) as the JS backend.
 * `duktape`: Use [duktape](https://crates.io/crates/ducc) as the JS backend. You need to disable the default features to enable this backend.
 * `wasm-js`: Use [wasm-bindgen](https://crates.io/crates/wasm-bindgen) and [js-sys](https://crates.io/crates/js-sys) as the JS backend. You need to disable the default features to enable this backend.
 

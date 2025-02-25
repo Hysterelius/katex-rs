@@ -3,7 +3,7 @@
 
 use crate::{
     error::{Error, Result},
-    js_engine::{JsEngine, JsValue},
+    js_engine::JsEngine,
 };
 
 /// Wasm JS Engine.
@@ -65,16 +65,14 @@ impl JsEngine for Engine {
         }
         Ok(Value(obj.into()))
     }
+
+    fn value_to_string(&self, value: Self::JsValue<'_>) -> Result<String> {
+        value.0
+            .as_string()
+            .ok_or_else(|| Error::JsValueError("cannot convert value to string".to_owned()))
+    }
 }
 
 /// Wasm JS Value.
 #[derive(Debug)]
 pub struct Value(wasm_bindgen::JsValue);
-
-impl<'a> JsValue<'a> for Value {
-    fn into_string(self) -> Result<String> {
-        self.0
-            .as_string()
-            .ok_or_else(|| Error::JsValueError("cannot convert value to string".to_owned()))
-    }
-}

@@ -183,10 +183,7 @@ impl Opts {
                     opt.insert("maxExpand".to_owned(), engine.create_int_value(max_expand)?);
                 }
                 None => {
-                    opt.insert(
-                        "maxExpand".to_owned(),
-                        engine.create_int_value(i32::max_value())?,
-                    );
+                    opt.insert("maxExpand".to_owned(), engine.create_int_value(i32::MAX)?);
                 }
             }
         }
