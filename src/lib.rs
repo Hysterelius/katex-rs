@@ -1,34 +1,109 @@
-//! This crate offers Rust bindings to [KaTeX](https://katex.org).
-//! This allows you to render LaTeX equations to HTML.
+//! Rust bindings to the high‑performance math typesetting library
+//! [KaTeX](https://katex.org). This crate lets you render LaTeX (and a
+//! subset of TeX) expressions into HTML (and/or MathML) entirely in memory
+//! without spawning external processes.
 //!
-//! # Usage
+//! Rendering is performed by executing the KaTeX (or, when requested,
+//! [Temml](https://temml.org)) JavaScript bundle inside an embedded JS
+//! engine. Several engines are supported via Cargo features (see below).
+//!
+//! ## Quick start
 //!
 //! Add this to your `Cargo.toml`:
+//!
 //! ```toml
 //! [dependencies]
 //! katex = "0.4"
 //! ```
 //!
-//! This crate offers the following features:
-//!
-//! * `quick-js`: Enable by default. Use [rquickjs](https://crates.io/crates/rquickjs)
-//!    as the JS backend.
-//! * `duktape`: Use [duktape](https://crates.io/crates/ducc) as the JS backend.
-//!    You need to disable the default features to enable this backend.
-//! * `wasm-js`: Use [wasm-bindgen](https://crates.io/crates/wasm-bindgen) and
-//!    [js-sys](https://crates.io/crates/js-sys) as the JS backend.
-//!    You need to disable the default features to enable this backend.
-//! *  `temml`: Use the [Temml](https://temml.org/) library instead of KaTeX
-//!     when MathML-only output is requested.
-//!
-//! # Examples
+//! Then render some math:
 //!
 //! ```
-//! let html = katex::render("E = mc^2").unwrap();
-//!
-//! let opts = katex::Opts::builder().display_mode(true).build().unwrap();
-//! let html_in_display_mode = katex::render_with_opts("E = mc^2", &opts).unwrap();
+//! let html_fragment = katex::render(r"E = mc^2").unwrap();
+//! assert!(html_fragment.contains("katex"));
 //! ```
+//!
+//! Or configure options with the builder:
+//!
+//! ```
+//! let opts = katex::Opts::builder()
+//!     .display_mode(true)
+//!     .output_type(katex::OutputType::HtmlAndMathml)
+//!     .build()
+//!     .unwrap();
+//! let html = katex::render_with_opts(r"\\frac{a}{b}", &opts).unwrap();
+//! assert!(html.contains("katex-display"));
+//! ```
+//!
+//! ## Feature flags / backends
+//!
+//! Exactly one JS execution backend must be enabled. The default backend is
+//! `quick-js`.
+//!
+//! * `quick-js` *(default)* – Uses [rquickjs](https://crates.io/crates/rquickjs)
+//!   (QuickJS) for fast, embeddable execution.
+//! * `duktape` – Uses [ducc](https://crates.io/crates/ducc) (Duktape). Disable
+//!   default features first: `default-features = false, features = ["duktape"]`.
+//! * `wasm-js` – Uses a browser / wasm environment via
+//!   [wasm-bindgen](https://crates.io/crates/wasm-bindgen) +
+//!   [js-sys](https://crates.io/crates/js-sys). Only valid for `wasm32-unknown-unknown`.
+//! * `temml` – When combined with `OutputType::Mathml`, use the
+//!   [Temml](https://temml.org) library (KaTeX compatible) to produce concise
+//!   MathML output. Falls back to KaTeX for other output types.
+//!
+//! ## Threading & caching
+//!
+//! A JavaScript engine instance is created lazily per thread and then reused
+//! for subsequent renders on that thread (using a thread‑local). This keeps
+//! rendering cheap after the first call. Each thread therefore maintains its
+//! own isolated JS context – there is no cross‑thread mutation.
+//!
+//! ## Error handling
+//!
+//! All fallible APIs return [`Result<T, Error>`]. Distinct error variants
+//! differentiate between: engine initialisation, JavaScript execution, and
+//! value conversion issues. Parse errors from KaTeX itself surface as the
+//! `JsExecError` variant with a message produced by KaTeX.
+//!
+//! ## Performance notes
+//!
+//! * The first render on a thread pays the cost of bootstrapping and loading
+//!   the (minified) JS bundle.
+//! * Subsequent renders only invoke pure JS functions and are typically fast.
+//! * If you render in many short‑lived threads you will incur repeated init
+//!   overhead; prefer reusing threads (e.g. a thread pool) for batch work.
+//!
+//! ## HTML & CSS integration
+//!
+//! The returned string is an HTML fragment; you are responsible for including
+//! the appropriate KaTeX (or Temml) CSS in your page if you want visual layout
+//! besides plain MathML. For server‑side rendering pipelines you can inline or
+//! bundle the KaTeX stylesheet separately.
+//!
+//! ## Choosing an output type
+//!
+//! Set via [`Opts::output_type`]:
+//! * `Html` – visual HTML only (smallest payload, least accessible).
+//! * `Mathml` – MathML only (pair well with `temml` for semantic output).
+//! * `HtmlAndMathml` – default KaTeX hybrid (good balance of accessibility & compatibility).
+//!
+//! ## Security
+//!
+//! If you accept untrusted LaTeX input consider:
+//! * Set `throw_on_error(false)` to avoid throwing on invalid input.
+//! * Leave `trust(false)` (default) so potentially unsafe constructs (e.g. `\url{}`)
+//!   are sanitized.
+//! * Filter / sandbox usage depending on your deployment context.
+//!
+//! ## Minimum Supported Rust Version (MSRV)
+//! This crate follows *Cargo.toml* specification; consult `Cargo.toml` for the
+//! currently tested MSRV. Semver‑minor bumps may raise MSRV with justification.
+//!
+//! ## License
+//! Dual‑licensed under either MIT or Apache‑2.0 at your option.
+//!
+//! ---
+//! Happy typesetting! 🧮
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]

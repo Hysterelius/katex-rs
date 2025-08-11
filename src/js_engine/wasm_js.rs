@@ -6,7 +6,7 @@ use crate::{
     js_engine::JsEngine,
 };
 
-/// Wasm JS Engine.
+/// Wasm JS Engine (thin wrapper around global `JsValue` APIs).
 pub struct Engine;
 
 impl JsEngine for Engine {
@@ -67,12 +67,13 @@ impl JsEngine for Engine {
     }
 
     fn value_to_string(&self, value: Self::JsValue<'_>) -> Result<String> {
-        value.0
+        value
+            .0
             .as_string()
             .ok_or_else(|| Error::JsValueError("cannot convert value to string".to_owned()))
     }
 }
 
-/// Wasm JS Value.
+/// Wrapper type so we can implement the trait without exposing raw `JsValue`.
 #[derive(Debug)]
 pub struct Value(wasm_bindgen::JsValue);

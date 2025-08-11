@@ -1,4 +1,30 @@
-//! Custom KaTeX behaviors.
+//! Configuration options controlling how KaTeX / Temml renders math.
+//!
+//! The central type is [`Opts`], constructed either directly or (more commonly)
+//! via the ergonomic [`Opts::builder`]. Unspecified options fall back to the
+//! defaults provided by KaTeX / Temml themselves. Only options explicitly set
+//! are forwarded to the underlying JS engine so the surface stays minimal.
+//!
+//! See the upstream KaTeX documentation for the semantics of most fields:
+//! <https://katex.org/docs/options.html>. Temml‑specific options are documented
+//! at <https://temml.org/docs/en/administration#options>.
+//!
+//! # Example
+//!
+//! Basic usage with the builder pattern:
+//! ```
+//! let opts = katex::Opts::builder()
+//!     .display_mode(true)
+//!     .output_type(katex::OutputType::HtmlAndMathml)
+//!     .error_color("#cc0000")
+//!     .macros(std::collections::HashMap::from([
+//!         (r"\\RR".into(), r"\\mathbb{R}".into())
+//!     ]))
+//!     .build()
+//!     .unwrap();
+//! let html = katex::render_with_opts(r"\\RR", &opts).unwrap();
+//! assert!(html.contains("mathbb"));
+//! ```
 
 use crate::{error::Result, js_engine::JsEngine};
 use derive_builder::Builder;
@@ -13,17 +39,26 @@ use std::{collections::HashMap, fmt};
 #[builder(default)]
 #[builder(setter(into, strip_option))]
 pub struct Opts {
-    /// Whether to render the math in the display mode.
+    /// Whether to render math in KaTeX *display* mode (`true`) or *inline* (`false`).
+    ///
+    /// Display mode centers the expression on its own line and uses larger
+    /// vertical spacing. Corresponds to KaTeX `displayMode`.
     display_mode: Option<bool>,
-    /// KaTeX output type.
+    /// Which output format KaTeX should produce.
+    ///
+    /// Defaults to KaTeX's hybrid HTML + MathML when unset.
     output_type: Option<OutputType>,
-    /// Whether to have `\tags` rendered on the left instead of the right.
+    /// Whether to typeset equation tags / numbers (`\tag{}` / `\label{}`)
+    /// on the left instead of the right (LaTeX's `leqno`).
     leqno: Option<bool>,
-    /// Whether to make display math flush left.
+    /// Whether display mode equations are left‑aligned instead of centered (`fleqn`).
     fleqn: Option<bool>,
-    /// Whether to let KaTeX throw a ParseError for invalid LaTeX.
+    /// If `true`, parsing invalid LaTeX will raise an error (returned as
+    /// [`Error::JsExecError`]); if `false` KaTeX inserts error nodes styled by
+    /// [`error_color`].
     throw_on_error: Option<bool>,
-    /// Color used for invalid LaTeX.
+    /// CSS color (hex / rgb / named) applied to invalid LaTeX segments when
+    /// `throw_on_error` is `false`.
     error_color: Option<String>,
     /// Collection of custom macros.
     /// Read <https://katex.org/docs/options.html> for more information.
@@ -68,7 +103,7 @@ impl Opts {
         OptsBuilder::default()
     }
 
-    /// Set whether to render the math in the display mode.
+    /// Set whether to render the math in display mode.
     pub fn set_display_mode(&mut self, flag: bool) {
         self.display_mode = Some(flag);
     }
@@ -78,82 +113,81 @@ impl Opts {
         self.output_type == Some(OutputType::Mathml)
     }
 
-    /// Set KaTeX output type.
+    /// Set which format(s) to emit.
     pub fn set_output_type(&mut self, output_type: OutputType) {
         self.output_type = Some(output_type);
     }
 
-    /// Set whether to have `\tags` rendered on the left instead of the right.
+    /// Set whether to place equation tags on the left.
     pub fn set_leqno(&mut self, flag: bool) {
         self.leqno = Some(flag);
     }
 
-    /// Set whether to make display math flush left.
+    /// Set whether display math should be left‑aligned.
     pub fn set_fleqn(&mut self, flag: bool) {
         self.fleqn = Some(flag);
     }
 
-    /// Set whether to let KaTeX throw a ParseError for invalid LaTeX.
+    /// Set whether invalid LaTeX triggers a hard error.
     pub fn set_throw_on_error(&mut self, flag: bool) {
         self.throw_on_error = Some(flag);
     }
 
-    /// Set the color used for invalid LaTeX.
+    /// Set the color used for decorating invalid LaTeX segments.
     pub fn set_error_color(&mut self, color: String) {
         self.error_color = Some(color);
     }
 
-    /// Add a custom macro.
-    /// Read <https://katex.org/docs/options.html> for more information.
+    /// Add a single custom macro mapping. Convenience for inserting into
+    /// [`Opts::macros`]. See KaTeX docs for macro expansion semantics.
     pub fn add_macro(&mut self, entry_name: String, entry_data: String) {
         self.macros.insert(entry_name, entry_data);
     }
 
-    /// Set the minimum thickness, in ems.
-    /// Read <https://katex.org/docs/options.html> for more information.
+    /// Set the minimum thickness (in `em`) for fraction lines, `\rule`, etc.
     pub fn set_min_rule_thickness(&mut self, value: f64) {
         self.min_rule_thickness = Some(value);
     }
 
-    /// Set the max size for user-specified sizes.
-    /// If set to `None`, users can make elements and spaces arbitrarily large.
-    /// Read <https://katex.org/docs/options.html> for more information.
+    /// Set the max size (in `em`) for user‑specified sizes (e.g. via `\rule`).
+    ///
+    /// `None` removes the limit (allowing arbitrarily large elements). The
+    /// outer `Option` indicates whether to send this override at all.
     pub fn set_max_size(&mut self, value: Option<f64>) {
         self.max_size = Some(value);
     }
 
-    /// Set the limit for the number of macro expansions.
-    /// If set to `None`, the macro expander will try to fully expand as in LaTeX.
-    /// Read <https://katex.org/docs/options.html> for more information.
+    /// Set the limit for macro expansion depth. Prevents runaway recursion.
+    ///
+    /// * `Some(Some(n))` – Explicit finite limit.
+    /// * `Some(None)` – Remove limit (use with care!).
+    /// * `None` – Do not override KaTeX default.
     pub fn set_max_expand(&mut self, value: Option<i32>) {
         self.max_expand = Some(value);
     }
 
-    /// Set whether to trust users' input.
-    /// Read <https://katex.org/docs/options.html> for more information.
+    /// Set whether to trust user input for potentially unsafe commands.
+    ///
+    /// Controls sanitization of constructs like `\url{}` and raw HTML. Keep
+    /// `false` for untrusted input sources.
     pub fn set_trust(&mut self, flag: bool) {
         self.trust = Some(flag);
     }
 
-    /// Temml-specific:
-    /// whether to annotate MathML with input LaTeX string.
-    /// Read <https://temml.org/docs/en/administration#options> for more information.
+    /// Temml-specific: add an annotation with the source LaTeX inside the
+    /// generated MathML (facilitates copy/paste fidelity and debugging).
     #[cfg(feature = "temml")]
     pub fn set_annotate(&mut self, flag: bool) {
         self.annotate = Some(flag);
     }
 
-    /// Temml-specific:
-    /// where to insert soft line breaks.
-    /// Read <https://temml.org/docs/en/administration#options> for more information.
+    /// Temml-specific: choose where soft line breaks may be inserted.
     #[cfg(feature = "temml")]
     pub fn set_wrap(&mut self, mode: WrapMode) {
         self.wrap = Some(mode);
     }
 
-    /// Temml-specific:
-    /// set whether to specify XML namespace on `<math>` elements.
-    /// Read <https://temml.org/docs/en/administration#options> for more information.
+    /// Temml-specific: include the XML namespace on `<math>` elements.
     #[cfg(feature = "temml")]
     pub fn set_xml(&mut self, flag: bool) {
         self.xml = Some(flag);
@@ -258,7 +292,10 @@ impl AsRef<Opts> for Opts {
 }
 
 impl OptsBuilder {
-    /// Add an entry to [`macros`](OptsBuilder::macros).
+    /// Add (chain) a macro mapping into the accumulated macro table.
+    ///
+    /// Shorthand for manipulating the `macros` map directly. Duplicate keys
+    /// are overwritten by later calls.
     ///
     /// # Examples
     ///

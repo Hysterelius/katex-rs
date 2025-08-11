@@ -6,7 +6,7 @@ use crate::{
 };
 use ducc::{FromValue, ToValue};
 
-/// Duktape Engine.
+/// Duktape engine wrapper implementing [`JsEngine`].
 pub struct Engine(ducc::Ducc);
 
 impl JsEngine for Engine {

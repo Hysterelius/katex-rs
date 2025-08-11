@@ -7,9 +7,11 @@ use crate::{
     js_engine::JsEngine,
 };
 
+/// Wrapper around a `rquickjs::Value` pinned for `'static` via a `Persistent`.
 #[derive(Debug)]
 pub(crate) struct Value(rquickjs::Persistent<rquickjs::Value<'static>>);
 
+/// QuickJS engine type alias (full context with standard objects loaded).
 pub type Engine = rquickjs::Context;
 
 impl JsEngine for Engine {
