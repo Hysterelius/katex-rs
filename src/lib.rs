@@ -18,6 +18,8 @@
 //! * `wasm-js`: Use [wasm-bindgen](https://crates.io/crates/wasm-bindgen) and
 //!    [js-sys](https://crates.io/crates/js-sys) as the JS backend.
 //!    You need to disable the default features to enable this backend.
+//! *  `temml`: Use the [Temml](https://temml.org/) library instead of KaTeX
+//!     when MathML-only output is requested.
 //!
 //! # Examples
 //!
@@ -30,6 +32,8 @@
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
+
+use core::iter;
 
 pub mod error;
 pub use error::{Error, Result};
@@ -44,6 +48,7 @@ use js_engine::{Engine, JsEngine};
 pub const KATEX_VERSION: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/KATEX-VERSION"));
 
 /// JS source code.
+#[cfg(not(feature = "temml"))]
 const JS_SRC: &str = concat!(
     // HACK to load KaTeX code in Node.js
     // By setting `module` and `exports` as undefined, we prevent KaTeX to
@@ -55,6 +60,41 @@ const JS_SRC: &str = concat!(
     include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/vendor/contrib/mhchem.min.js"
+    )),
+    // restore HACK done in node-hack.js
+    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/js/post-node-hack.js")),
+    // entry function
+    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/js/entry.js")),
+);
+
+#[cfg(feature = "temml")]
+const JS_SRC: &str = concat!(
+    // HACK to load KaTeX code in Node.js
+    // By setting `module` and `exports` as undefined, we prevent KaTeX to
+    // be loaded like normal Node.js module.
+    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/js/node-hack.js")),
+    // KaTeX JS source code
+    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/vendor/katex.min.js")),
+    // mhchem JS source code
+    include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/vendor/contrib/mhchem.min.js"
+    )),
+    include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/vendor/temml/dist/temml.min.js"
+    )),
+    include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/vendor/temml/contrib/mhchem/mhchem.min.js"
+    )),
+    include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/vendor/temml/contrib/physics/physics.js"
+    )),
+    include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/vendor/temml/contrib/texvc/texvc.js"
     )),
     // restore HACK done in node-hack.js
     include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/js/post-node-hack.js")),
@@ -83,13 +123,16 @@ fn render_inner<E>(engine: &E, input: &str, opts: impl AsRef<Opts>) -> Result<St
 where
     E: JsEngine,
 {
-    use core::iter;
-
+    let opts = opts.as_ref();
     let input = engine.create_string_value(input.to_owned())?;
-    let opts = opts.as_ref().to_js_value(engine)?;
-    let args = iter::once(input).chain(iter::once(opts));
-    let result = engine.call_function("katexRenderToString", args)?;
-    engine.value_to_string(result)
+    let opts_js = opts.to_js_value(engine)?;
+    let args = iter::once(input).chain(iter::once(opts_js));
+    let result = (if cfg!(feature = "temml") && opts.is_mathml_only() {
+        engine.call_function("temmlRenderToString", args)
+    } else {
+        engine.call_function("katexRenderToString", args)
+    })?;
+    result.into_string()
 }
 
 /// Render LaTeX equation to HTML with additional [options](`Opts`).

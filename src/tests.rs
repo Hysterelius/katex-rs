@@ -59,7 +59,10 @@ fn test_output_mathml_only() {
         .build()
         .unwrap();
     let html = render_with_opts("a = b + c", opts).unwrap();
-    assert!(html.contains(r#"MathML"#));
+    assert!(html.contains(r#"</math>"#));
+    if !cfg!(feature = "temml") {
+        assert!(html.contains(r#"MathML"#));
+    }
     assert!(!html.contains(r#"span class="katex-html""#));
 }
 

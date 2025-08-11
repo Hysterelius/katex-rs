@@ -3,7 +3,7 @@
 use crate::{error::Result, js_engine::JsEngine};
 use derive_builder::Builder;
 use itertools::process_results;
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt};
 
 /// Options to be passed to KaTeX.
 ///
@@ -44,6 +44,22 @@ pub struct Opts {
     /// Whether to trust users' input.
     /// Read <https://katex.org/docs/options.html> for more information.
     trust: Option<bool>,
+
+    /// Temml-sepcific:
+    /// whether to annotate MathML with input LaTeX string.
+    /// Read <https://temml.org/docs/en/administration#options> for more information.
+    #[cfg(feature = "temml")]
+    annotate: Option<bool>,
+    /// Temml-sepcific:
+    /// where to insert soft line breaks.
+    /// Read <https://temml.org/docs/en/administration#options> for more information.
+    #[cfg(feature = "temml")]
+    wrap: Option<WrapMode>,
+    /// Temml-sepcific:
+    /// whether to include an XML namespace inside MathML elements.
+    /// Read <https://temml.org/docs/en/administration#options> for more information.
+    #[cfg(feature = "temml")]
+    xml: Option<bool>,
 }
 
 impl Opts {
@@ -55,6 +71,11 @@ impl Opts {
     /// Set whether to render the math in the display mode.
     pub fn set_display_mode(&mut self, flag: bool) {
         self.display_mode = Some(flag);
+    }
+
+    /// Whether the output type is MathML only (allowing usage of Temml).
+    pub(crate) fn is_mathml_only(&self) -> bool {
+        self.output_type == Some(OutputType::Mathml)
     }
 
     /// Set KaTeX output type.
@@ -114,6 +135,30 @@ impl Opts {
         self.trust = Some(flag);
     }
 
+    /// Temml-specific:
+    /// whether to annotate MathML with input LaTeX string.
+    /// Read <https://temml.org/docs/en/administration#options> for more information.
+    #[cfg(feature = "temml")]
+    pub fn set_annotate(&mut self, flag: bool) {
+        self.annotate = Some(flag);
+    }
+
+    /// Temml-specific:
+    /// where to insert soft line breaks.
+    /// Read <https://temml.org/docs/en/administration#options> for more information.
+    #[cfg(feature = "temml")]
+    pub fn set_wrap(&mut self, mode: WrapMode) {
+        self.wrap = Some(mode);
+    }
+
+    /// Temml-specific:
+    /// set whether to specify XML namespace on `<math>` elements.
+    /// Read <https://temml.org/docs/en/administration#options> for more information.
+    #[cfg(feature = "temml")]
+    pub fn set_xml(&mut self, flag: bool) {
+        self.xml = Some(flag);
+    }
+
     pub(crate) fn to_js_value<'a, E>(&self, engine: &'a E) -> Result<E::JsValue<'a>>
     where
         E: JsEngine,
@@ -128,14 +173,7 @@ impl Opts {
         if let Some(output_type) = self.output_type {
             opt.insert(
                 "output".to_owned(),
-                engine.create_string_value(
-                    match output_type {
-                        OutputType::Html => "html",
-                        OutputType::Mathml => "mathml",
-                        OutputType::HtmlAndMathml => "htmlAndMathml",
-                    }
-                    .to_owned(),
-                )?,
+                engine.create_string_value(output_type.to_string())?,
             );
         }
         if let Some(leqno) = self.leqno {
@@ -190,6 +228,25 @@ impl Opts {
         if let Some(trust) = self.trust {
             opt.insert("trust".to_owned(), engine.create_bool_value(trust)?);
         }
+
+        #[cfg(feature = "temml")]
+        if let Some(annotate) = self.annotate {
+            opt.insert("xml".to_owned(), engine.create_bool_value(annotate)?);
+        }
+
+        #[cfg(feature = "temml")]
+        if let Some(wrap) = self.wrap {
+            opt.insert(
+                "wrap".to_owned(),
+                engine.create_string_value(wrap.to_string())?,
+            );
+        }
+
+        #[cfg(feature = "temml")]
+        if let Some(xml) = self.xml {
+            opt.insert("xml".to_owned(), engine.create_bool_value(xml)?);
+        }
+
         engine.create_object_value(opt.into_iter())
     }
 }
@@ -236,4 +293,38 @@ pub enum OutputType {
     Mathml,
     /// Outputs HTML for visual rendering and includes MathML for accessibility.
     HtmlAndMathml,
+}
+
+impl fmt::Display for OutputType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            OutputType::Html => "html",
+            OutputType::Mathml => "mathml",
+            OutputType::HtmlAndMathml => "htmlAndMathml",
+        })
+    }
+}
+
+/// Wrap mode for Temml.
+#[non_exhaustive]
+#[cfg(feature = "temml")]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum WrapMode {
+    /// Soft line break after every top-level relation and binary operator.
+    Tex,
+    /// Soft line break after every top-level `=` except for the first.
+    Equals,
+    /// No soft line breaks.
+    None,
+}
+
+#[cfg(feature = "temml")]
+impl fmt::Display for WrapMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            WrapMode::Tex => "tex",
+            WrapMode::Equals => "=",
+            WrapMode::None => "none",
+        })
+    }
 }
