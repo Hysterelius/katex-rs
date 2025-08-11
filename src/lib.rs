@@ -132,7 +132,7 @@ where
     } else {
         engine.call_function("katexRenderToString", args)
     })?;
-    result.into_string()
+    engine.value_to_string(result)
 }
 
 /// Render LaTeX equation to HTML with additional [options](`Opts`).
