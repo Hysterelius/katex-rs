@@ -1,7 +1,7 @@
 # katex-rs
 
 > [!NOTE]
-> This repo is a fork of the wonderful [katex-rs](https://github.com/xu-cheng/katex-rs) project, merging in two PRS from [Jules Bertholet](https://github.com/Jules-Bertholet) which add [rquickjs](https://github.com/xu-cheng/katex-rs/pull/18) and [temml](https://github.com/xu-cheng/katex-rs/pull/20) support.
+> This repo is a fork of the wonderful [katex-rs](https://github.com/xu-cheng/katex-rs) project, while merging in two PRs from [Jules Bertholet](https://github.com/Jules-Bertholet) which add [rquickjs](https://github.com/xu-cheng/katex-rs/pull/18) and [temml](https://github.com/xu-cheng/katex-rs/pull/20) support.
 
 [![Build Status](https://github.com/xu-cheng/katex-rs/workflows/build/badge.svg)](https://github.com/xu-cheng/katex-rs/actions)
 [![Latest Version](https://img.shields.io/crates/v/katex.svg)](https://crates.io/crates/katex)
