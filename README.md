@@ -1,5 +1,8 @@
 # katex-rs
 
+> [!NOTE]
+> This repo is a fork of the wonderful [katex-rs](https://github.com/xu-cheng/katex-rs) project, merging in two PRS from [Jules Bertholet](https://github.com/Jules-Bertholet) which add [rquickjs](https://github.com/xu-cheng/katex-rs/pull/18) and [temml](https://github.com/xu-cheng/katex-rs/pull/20) support.
+
 [![Build Status](https://github.com/xu-cheng/katex-rs/workflows/build/badge.svg)](https://github.com/xu-cheng/katex-rs/actions)
 [![Latest Version](https://img.shields.io/crates/v/katex.svg)](https://crates.io/crates/katex)
 [![Rust Documentation](https://docs.rs/katex/badge.svg)](https://docs.rs/katex)
@@ -24,6 +27,12 @@ This crate offers the following features:
 * `quick-js`: Enable by default. Use [rquickjs](https://crates.io/crates/rquickjs) as the JS backend.
 * `duktape`: Use [duktape](https://crates.io/crates/ducc) as the JS backend. You need to disable the default features to enable this backend.
 * `wasm-js`: Use [wasm-bindgen](https://crates.io/crates/wasm-bindgen) and [js-sys](https://crates.io/crates/js-sys) as the JS backend. You need to disable the default features to enable this backend.
+
+### Notice
+For the output to render correctly, your HTML target must include the `katex.css` or `katex.min.css` stylesheet (but `katex.js` script is not needed). See the [KaTeX documentation](https://katex.org/docs/browser) for details, the css files can usually found by downloading the zip on the [releases page](https://github.com/KaTeX/KaTeX/releases).
+
+While for Temml, you have to include the `temml.min.js` script and at least the `Temml-Local.css` file for rendering. See the [Temml Documentation](https://temml.org/docs/en/administration) for more details.
+
 
 ## Examples
 
