@@ -6,7 +6,7 @@ VENDOR_DIR="$ROOT_DIR/vendor/temml"
 VERSION="$(cat ./TEMML-VERSION)"
 URL="https://github.com/ronkok/Temml/archive/refs/tags/v${VERSION}.tar.gz"
 
-rm -rf "$VENDOR_DIR"
+# rm -rf "$VENDOR_DIR"
 mkdir -p "$VENDOR_DIR"
 echo "download ${URL}..."
 curl -L https://raw.githubusercontent.com/ronkok/Temml/master/LICENSE -o "$VENDOR_DIR/TEMML-LICENSE"
