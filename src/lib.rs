@@ -152,11 +152,14 @@ const JS_SRC: &str = concat!(
     // be loaded like normal Node.js module.
     include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/js/node-hack.js")),
     // KaTeX JS source code
-    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/vendor/katex.min.js")),
+    include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/vendor/katex/katex.min.js"
+    )),
     // mhchem JS source code
     include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/vendor/contrib/mhchem.min.js"
+        "/vendor/katex/contrib/mhchem.min.js"
     )),
     include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
